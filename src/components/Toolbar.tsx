@@ -1,5 +1,6 @@
 import { useState, type MutableRefObject } from 'react';
 import {
+  Boxes,
   ChevronDown,
   Download,
   Eye,
@@ -8,6 +9,7 @@ import {
   PanelLeft,
   PanelRight,
   Pencil,
+  Repeat,
   Redo2,
   Save,
   Sun,
@@ -31,12 +33,18 @@ export default function Toolbar({
   onSave,
   onImportClick,
   onExport,
+  onAddCallActivity,
+  onToggleCallable,
+  isCallable,
 }: {
   apiRef: MutableRefObject<BpmnApi | null>;
   onNew: () => void;
   onSave: () => void;
   onImportClick: () => void;
   onExport: (format: ExportFormat) => void;
+  onAddCallActivity: () => void;
+  onToggleCallable: () => void;
+  isCallable: boolean;
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const mode = useEditorStore((s) => s.mode);
@@ -63,6 +71,26 @@ export default function Toolbar({
       </button>
       <button className={btn} onClick={onSave}>
         <Save size={16} /> Save{isDirty ? ' •' : ''}
+      </button>
+      <span className="mx-1 h-5 w-px bg-slate-300 dark:bg-slate-600" />
+      <button
+        className={btn}
+        onClick={onAddCallActivity}
+        disabled={mode === 'view'}
+        title="Insert a reusable sub-process (Call Activity)"
+      >
+        <Boxes size={16} /> Sub-process
+      </button>
+      <button
+        className={`${btn} ${isCallable ? 'text-blue-600 dark:text-blue-400' : ''}`}
+        onClick={onToggleCallable}
+        title={
+          isCallable
+            ? 'This diagram is reusable (callable by others)'
+            : 'Mark this diagram as a reusable sub-process'
+        }
+      >
+        <Repeat size={16} /> {isCallable ? 'Reusable ✓' : 'Reusable'}
       </button>
 
       <div className="relative">
