@@ -1,1 +1,37 @@
-/* Phase 3 — dark mode + bpmn-js color overrides via CSS variables. See PROMPTS.md. */
+/* Dark-mode theming layered on top of bpmn-js defaults. */
+.dark .bjs-container,
+.dark .djs-container {
+  background-color: #0f172a;
+}
+
+.dark .djs-element .djs-visual > :is(rect, circle, path, polygon, ellipse) {
+  stroke: #cbd5e1;
+}
+.dark .djs-element .djs-visual > :is(rect, circle, polygon, ellipse) {
+  fill: #1e293b;
+}
+.dark .djs-element .djs-visual text,
+.dark .djs-label {
+  fill: #e2e8f0;
+}
+.dark .djs-connection .djs-visual > path {
+  stroke: #94a3b8;
+}
+.dark .djs-connection .djs-visual > path[marker-end] {
+  fill: #94a3b8;
+}
+
+/* Properties panel + minimap on dark */
+.dark .bio-properties-panel {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+.dark .djs-minimap {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+/* Keep the diagram crisp during pan/zoom */
+.djs-container svg {
+  shape-rendering: geometricprecision;
+}

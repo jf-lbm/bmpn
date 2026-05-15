@@ -1,25 +1,26 @@
 # Project: BPMN Viewer & Editor
 
 ## Goal
-A browser-based BPMN 2.0 viewer and editor inspired by ba-copilot.com's free
-editor. No AI features — a pure modeling tool. No install required for end
-users; it runs entirely in the browser.
+A browser-based BPMN 2.0 viewer and editor (built on bpmn.io / `bpmn-js`),
+behind authentication, with multi-user organizations. Diagrams are stored in a
+database as canonical BPMN 2.0 XML and shared across the members of an
+organization. No AI features — a pure modeling tool.
 
 ## Core user flows
-1. Open the app → blank canvas, ready to model
-2. Drag elements from a palette onto the canvas
-3. Import an existing `.bpmn` file (drag-drop or file picker)
-4. Edit visually: move, resize, connect, label elements
-5. Edit element properties in a side panel
-6. Export as `.bpmn` (XML), `.svg`, `.png`, or `.pdf`
-7. Diagram persists in `localStorage` between sessions
-8. Toggle viewer-only mode (read-only) vs editor mode
+1. Sign in (Clerk — password / OAuth / SSO) → pick or create an organization
+2. See the organization's diagrams in the sidebar
+3. Open a diagram → it loads from the DB into the bpmn-js canvas
+4. Edit visually: move, resize, connect, label; edit props in the side panel
+5. Save → the BPMN XML is written back to the DB row (shared with the org)
+6. Import an existing `.bpmn` file (file picker or drag-drop) → new DB diagram
+7. Export the current diagram as `.bpmn`, `.svg`, `.png`, or `.pdf`
+8. Toggle read-only (NavigatedViewer) vs editor (Modeler) mode
+9. Invite teammates / manage the org via Clerk's org UI
 
 ## Non-goals (do NOT build)
-- Authentication, accounts, backend
-- Real-time collaboration
-- AI generation from text
-- Server-side persistence
+- Real-time co-editing (cursors, CRDT). Sharing is async: save then reload.
+- AI generation from text.
+- A custom auth or backend server — Clerk + Supabase are the backend.
 
 ## Stack (do not deviate — stop and ask before adding a dependency)
 - Vite + React 18 + TypeScript (strict mode on)
@@ -27,64 +28,76 @@ users; it runs entirely in the browser.
 - bpmn-js — `Modeler` for editing, `NavigatedViewer` for read-only mode
 - bpmn-js-properties-panel + @bpmn-io/properties-panel for the right panel
 - diagram-js-minimap for the minimap
-- file-saver for downloads
-- svg2pdf.js + jspdf for PDF export from the SVG bpmn-js emits
-- zustand for app state (current XML, dirty flag, mode)
+- file-saver for downloads; svg2pdf.js + jspdf for PDF export
+- zustand for app/editor state
 - lucide-react for icons
+- @clerk/clerk-react — auth, organizations, member invitations, SSO
+- @supabase/supabase-js — Postgres storage of the BPMN XML
 
 No other UI libraries (no shadcn, no MUI, no Radix).
+
+## Data model
+Single table `public.diagrams` (see `supabase/schema.sql`): `id`, `org_id`
+(Clerk org), `owner_id` (Clerk user), `name`, `bpmn_xml` (the canonical BPMN
+2.0 XML — the DB is the source of truth), `created_at`, `updated_at`. Row
+Level Security scopes every row to its Clerk organization; only the owner can
+delete. The DB stores nothing bpmn.io-specific — exported `.bpmn` round-trips
+with any standard BPMN tool.
 
 ## Project structure
 ```
 src/
-  main.tsx
-  App.tsx
+  main.tsx                 # ClerkProvider + root render (no StrictMode)
+  App.tsx                  # auth/org gating + workspace orchestration
   components/
-    Toolbar.tsx          # New / Open / Save / Export / Undo / Redo / Zoom
-    BpmnCanvas.tsx       # Hosts the bpmn-js Modeler
-    PropertiesPanel.tsx  # Right side, collapsible
-    StatusBar.tsx        # Element count, dirty indicator, zoom %
-    FileDropZone.tsx     # Drag-and-drop overlay
+    Toolbar.tsx            # New / Import / Save / Export / Undo / Redo / Zoom / mode / theme
+    BpmnCanvas.tsx         # Hosts bpmn-js, empty-state hint
+    PropertiesPanel.tsx    # Collapsible right panel (edit mode only)
+    StatusBar.tsx          # Element count, zoom %, dirty/saved
+    FileDropZone.tsx       # Window-wide .bpmn drag-drop overlay
+    DiagramSidebar.tsx     # Per-org diagram list (open / new / delete)
   hooks/
-    useBpmnModeler.ts    # Lifecycle, import/export, event bus
-    useKeyboardShortcuts.ts
-    useLocalStoragePersistence.ts
+    useBpmnModeler.ts      # bpmn-js lifecycle, API, event bus, mode swap
+    useKeyboardShortcuts.ts# Ctrl/Cmd+S save, Ctrl/Cmd+O import
+    useLocalStoragePersistence.ts # remembers last-opened diagram id per org
   lib/
-    exporters/
-      exportSvg.ts
-      exportPng.ts
-      exportPdf.ts
-      exportBpmn.ts
-    diagrams/
-      emptyDiagram.ts    # Minimal valid BPMN XML for "New"
-  store/
-    editorStore.ts       # zustand: xml, isDirty, mode, lastSavedAt
-  styles/
-    index.css            # Tailwind entry
-    bpmn-overrides.css    # Light/dark theming on top of bpmn-js defaults
+    supabase.ts            # Supabase client authed with the Clerk token
+    diagramRepository.ts   # CRUD over the diagrams table
+    exporters/             # exportBpmn / exportSvg / exportPng / exportPdf / util
+    diagrams/emptyDiagram.ts
+  store/editorStore.ts     # zustand: diagram id/name, dirty, saving, mode, ui
+  styles/                  # index.css (Tailwind), bpmn-overrides.css (dark)
+  types/shims.d.ts         # ambient decls for untyped bpmn.io modules
+supabase/schema.sql        # table + RLS + updated_at trigger
+.env.example               # required env vars
 ```
 
-The scaffold and an empty stub for each file above already exist. Implement
-the phases (see `PROMPTS.md`) by filling in the stubs — do not rebuild the
-tree from scratch.
+## External setup (required to run)
+1. `npm install`, then copy `.env.example` → `.env.local` and fill the three
+   `VITE_` vars.
+2. Clerk dashboard: enable **Organizations**; configure SSO/OAuth connections
+   as desired (no code change — `bpmn-js` UI is unchanged).
+3. Supabase: run `supabase/schema.sql`. Wire Clerk as a third-party auth
+   provider (Clerk → Integrations → Supabase; Supabase → Authentication →
+   Third-party Auth). Confirm the org-id JWT claim name and adjust the RLS
+   policies in `schema.sql` if it isn't `org_id`.
 
 ## Key constraints
-- bpmn-js is a side-effect-heavy library. Never store the Modeler instance in
-  React state — use a `useRef`. Never put `modeler` in a `useEffect` deps array.
-- Create the Modeler once on mount, destroy it on unmount. Do not recreate it
-  on re-render. (`main.tsx` does not use `React.StrictMode` for this reason —
-  its double-invoked effects double-mount the canvas.)
-- Import the bpmn-js CSS: `bpmn-js/dist/assets/diagram-js.css`,
-  `bpmn-js/dist/assets/bpmn-js.css`,
-  `bpmn-js/dist/assets/bpmn-font/css/bpmn.css`.
-- bpmn-js types are imperfect — prefer `import type` and a commented
-  `// @ts-expect-error` over `any` where the library typings are wrong.
-- Build phases incrementally; never rewrite a prior phase, only extend it.
-- After each phase, manually test the import → edit → export round-trip and
-  report any XML loss.
+- bpmn-js is side-effect-heavy. The instance lives in the `useBpmnModeler`
+  effect, never in React state. It is rebuilt only when edit/view mode flips.
+- `main.tsx` does not use `React.StrictMode` — its double-invoked effects
+  double-mount the canvas.
+- The DB is the source of truth for diagram XML; localStorage only remembers
+  which diagram to reopen.
+- bpmn-js types are imperfect — `useBpmnModeler` uses one documented cast and
+  minimal local interfaces instead of `any` sprinkled everywhere.
 
 ## Commands
-- `npm install` — first, before anything (deps are declared but not vendored)
+- `npm install`
 - `npm run dev` — dev server
 - `npm run build` — typecheck (`tsc -b`) + production build
 - `npm run preview` — preview the production build
+
+## Verification status
+Typechecks and builds clean. Runtime is **not** verified here: it needs real
+Clerk + Supabase keys and a browser, which this environment lacks.

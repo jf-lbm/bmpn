@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@bpmn-io/properties-panel": "^3.26.0",
+    "@clerk/clerk-react": "^5.39.0",
+    "@supabase/supabase-js": "^2.47.10",
     "bpmn-js": "^17.11.1",
     "bpmn-js-properties-panel": "^5.28.0",
     "diagram-js-minimap": "^5.2.0",
