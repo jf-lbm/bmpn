@@ -17,6 +17,7 @@ import {
 } from '@clerk/clerk-react';
 import BpmnCanvas from './components/BpmnCanvas';
 import DiagramSidebar from './components/DiagramSidebar';
+import CallActivityPicker from './components/CallActivityPicker';
 import FileDropZone from './components/FileDropZone';
 import StatusBar from './components/StatusBar';
 import Toolbar, { type ExportFormat } from './components/Toolbar';
@@ -31,8 +32,11 @@ import {
   createDiagram,
   deleteDiagram,
   getDiagram,
+  getDiagramByProcessId,
+  listCallableProcesses,
   listDiagrams,
   renameDiagram,
+  setDiagramCallable,
   updateDiagramXml,
   type DiagramSummary,
 } from './lib/diagramRepository';
@@ -132,6 +136,11 @@ function Workspace({ orgId }: { orgId: string }) {
 
   const [diagrams, setDiagrams] = useState<DiagramSummary[]>([]);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [callables, setCallables] = useState<DiagramSummary[]>([]);
+
+  const currentRow = diagrams.find((d) => d.id === diagramId) ?? null;
+  const isCurrentCallable = currentRow?.is_callable ?? false;
 
   const notify = useCallback((msg: string) => {
     const id = Date.now() + Math.random();
@@ -312,6 +321,88 @@ function Workspace({ orgId }: { orgId: string }) {
 
   useKeyboardShortcuts({ onSave: save, onOpen: onImportClick });
 
+  const openByProcessId = useCallback(
+    async (processId: string) => {
+      if (!db) return;
+      try {
+        const target = await getDiagramByProcessId(db, processId);
+        if (!target) {
+          notify('Referenced sub-process not found in this organization.');
+          return;
+        }
+        await open(target.id);
+      } catch (e) {
+        notify(errMsg(e));
+      }
+    },
+    [db, open, notify],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void waitForApi(apiRef).then((api) => {
+      if (active) api.setCallActivityOpenHandler((pid) => void openByProcessId(pid));
+    });
+    return () => {
+      active = false;
+    };
+  }, [openByProcessId]);
+
+  const openCallActivityPicker = useCallback(async () => {
+    if (!db) return;
+    try {
+      setCallables(await listCallableProcesses(db));
+      setPickerOpen(true);
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [db, notify]);
+
+  const pickCallable = useCallback(
+    (processId: string, name: string) => {
+      setPickerOpen(false);
+      apiRef.current?.insertCallActivity({ calledElement: processId, name });
+    },
+    [],
+  );
+
+  const createReusable = useCallback(async () => {
+    if (!db || !userId) return;
+    try {
+      const row = await createDiagram(db, {
+        orgId,
+        ownerId: userId,
+        name: 'Reusable sub-process',
+        bpmnXml: makeEmptyDiagram(),
+        isCallable: true,
+      });
+      await refresh();
+      setPickerOpen(false);
+      if (row.process_id) {
+        apiRef.current?.insertCallActivity({
+          calledElement: row.process_id,
+          name: row.name,
+        });
+      }
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [db, userId, orgId, refresh, notify]);
+
+  const toggleCurrentCallable = useCallback(async () => {
+    const id = useEditorStore.getState().diagramId;
+    if (!db || !id) {
+      notify('Save the diagram first, then mark it reusable.');
+      return;
+    }
+    try {
+      await setDiagramCallable(db, id, !isCurrentCallable);
+      await refresh();
+    } catch (e) {
+      notify(errMsg(e));
+    }
+  }, [db, isCurrentCallable, refresh, notify]);
+
   // Initial load: reopen last diagram, else first, else create one.
   const bootedRef = useRef(false);
   useEffect(() => {
@@ -349,6 +440,9 @@ function Workspace({ orgId }: { orgId: string }) {
         onSave={save}
         onImportClick={onImportClick}
         onExport={doExport}
+        onAddCallActivity={() => void openCallActivityPicker()}
+        onToggleCallable={() => void toggleCurrentCallable()}
+        isCallable={isCurrentCallable}
       />
 
       <div className="flex min-h-0 flex-1">
@@ -384,6 +478,14 @@ function Workspace({ orgId }: { orgId: string }) {
           </div>
         ))}
       </div>
+
+      <CallActivityPicker
+        open={pickerOpen}
+        callables={callables}
+        onPick={pickCallable}
+        onCreateNew={() => void createReusable()}
+        onClose={() => setPickerOpen(false)}
+      />
     </div>
   );
 }
