@@ -843,7 +843,7 @@ export default function CallActivityPicker({
         <ul className="max-h-72 overflow-auto">
           {callables.length === 0 && (
             <li className="px-2 py-3 text-xs text-slate-400">
-              No reusable sub-processes yet. Mark a diagram “Reusable” to make
+              No reusable sub-processes yet. Mark a diagram "Reusable" to make
               it callable.
             </li>
           )}
