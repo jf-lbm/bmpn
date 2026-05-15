@@ -33,6 +33,7 @@ organization. No AI features — a pure modeling tool.
 - lucide-react for icons
 - @clerk/clerk-react — auth, organizations, member invitations, SSO
 - @supabase/supabase-js — Postgres storage of the BPMN XML
+- vitest — dev-only unit tests for pure logic (added with explicit user approval; the only stack deviation, zero runtime impact)
 
 No other UI libraries (no shadcn, no MUI, no Radix).
 
@@ -43,6 +44,12 @@ Single table `public.diagrams` (see `supabase/schema.sql`): `id`, `org_id`
 Level Security scopes every row to its Clerk organization; only the owner can
 delete. The DB stores nothing bpmn.io-specific — exported `.bpmn` round-trips
 with any standard BPMN tool.
+
+Reusable sub-processes: a diagram with `is_callable = true` is referenced
+by other diagrams via a standard `bpmn:callActivity` whose `calledElement`
+is the reusable diagram's top-level process id. `process_id` is a derived
+index of that id; the BPMN XML remains the source of truth and round-trips
+with standard BPMN tooling.
 
 ## Project structure
 ```
@@ -56,6 +63,7 @@ src/
     StatusBar.tsx          # Element count, zoom %, dirty/saved
     FileDropZone.tsx       # Window-wide .bpmn drag-drop overlay
     DiagramSidebar.tsx     # Per-org diagram list (open / new / delete)
+    CallActivityPicker.tsx # Pick/create a reusable sub-process to call
   hooks/
     useBpmnModeler.ts      # bpmn-js lifecycle, API, event bus, mode swap
     useKeyboardShortcuts.ts# Ctrl/Cmd+S save, Ctrl/Cmd+O import
@@ -63,6 +71,8 @@ src/
   lib/
     supabase.ts            # Supabase client authed with the Clerk token
     diagramRepository.ts   # CRUD over the diagrams table
+    ids.ts                 # bpmnId — org-unique xsd:ID-valid element ids
+    bpmnXml.ts             # extractProcessId — derive process_id from XML
     exporters/             # exportBpmn / exportSvg / exportPng / exportPdf / util
     diagrams/emptyDiagram.ts
   store/editorStore.ts     # zustand: diagram id/name, dirty, saving, mode, ui
@@ -96,8 +106,13 @@ supabase/schema.sql        # table + RLS + updated_at trigger
 - `npm install`
 - `npm run dev` — dev server
 - `npm run build` — typecheck (`tsc -b`) + production build
+- `npm test` — Vitest unit suite (pure logic: ids, bpmnXml, emptyDiagram, repo payload)
 - `npm run preview` — preview the production build
 
 ## Verification status
 Typechecks and builds clean. Runtime is **not** verified here: it needs real
 Clerk + Supabase keys and a browser, which this environment lacks.
+Unit-tested with Vitest: bpmnId, extractProcessId, makeEmptyDiagram, and the
+diagram insert-payload builder. bpmn-js / React / Supabase integration is
+gated by typecheck + build (no DOM/browser harness); see the plan's manual
+verification checklist for runtime checks the operator must perform.
