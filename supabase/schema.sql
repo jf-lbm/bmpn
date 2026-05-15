@@ -19,6 +19,18 @@ create table if not exists public.diagrams (
   updated_at  timestamptz not null default now()
 );
 
+-- Reusable-sub-process support. process_id mirrors the top-level
+-- <bpmn:process> id from bpmn_xml (XML stays source of truth; this is a
+-- derived lookup index). is_callable marks a diagram as a reusable
+-- process other diagrams may reference via callActivity/calledElement.
+alter table public.diagrams
+  add column if not exists process_id  text;
+alter table public.diagrams
+  add column if not exists is_callable boolean not null default false;
+
+create index if not exists diagrams_callable_idx
+  on public.diagrams (org_id, is_callable);
+
 create index if not exists diagrams_org_id_idx on public.diagrams (org_id);
 create index if not exists diagrams_updated_at_idx on public.diagrams (updated_at desc);
 
