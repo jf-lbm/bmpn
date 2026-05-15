@@ -50,10 +50,15 @@ export default function DiagramSidebar({
             >
               <button
                 onClick={() => onOpen(d.id)}
-                className="flex-1 truncate text-left"
+                className="flex flex-1 items-center gap-1 truncate text-left"
                 title={d.name}
               >
-                {d.name}
+                <span className="truncate">{d.name}</span>
+                {d.is_callable && (
+                  <span className="shrink-0 rounded bg-blue-600 px-1 text-[10px] font-medium text-white dark:bg-blue-500">
+                    reusable
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => onDelete(d.id)}
