@@ -46,11 +46,12 @@ not a separate goal.
 - Replace the `EMPTY_DIAGRAM` constant with a `makeEmptyDiagram()`
   factory that injects fresh ids on every call:
   `Definitions_<rand>`, `Process_<rand>`, `StartEvent_<rand>`.
-- `<rand>` = a short collision-resistant token: 8 hex characters derived
-  from `crypto.randomUUID()`. The id is letter-prefixed
+- `<rand>` = a collision-resistant token: 16 hex characters (64 bits)
+  derived from `crypto.randomUUID()`. The id is letter-prefixed
   (`Process_`, etc.) so it is always a valid `xsd:ID`
   (must start with a letter/underscore, no whitespace). Example:
-  `Process_a1b2c3d4`.
+  `Process_a1b2c3d4e5f60718`. 64 bits keeps cross-diagram
+  `calledElement` collisions negligible at org scale (no DB check).
 - Uniqueness is by construction (UUID entropy) — no DB round-trip needed
   to allocate an id.
 - `useBpmnModeler.ts` currently bootstraps from `EMPTY_DIAGRAM`; it must

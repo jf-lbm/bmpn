@@ -140,7 +140,7 @@ import { bpmnId } from './ids';
 
 describe('bpmnId', () => {
   it('prefixes with the given name and a separator', () => {
-    expect(bpmnId('Process')).toMatch(/^Process_[0-9a-f]{8}$/);
+    expect(bpmnId('Process')).toMatch(/^Process_[0-9a-f]{16}$/);
   });
 
   it('is a valid xsd:ID (NCName: starts with a letter/underscore, no spaces)', () => {
@@ -166,13 +166,16 @@ Create `src/lib/ids.ts`:
 
 ```ts
 /**
- * Generates a BPMN element id of the form `Prefix_xxxxxxxx`, where the
- * suffix is 8 hex characters of UUID entropy. Unique across the org by
- * construction (no DB round-trip). The leading letter prefix keeps it a
- * valid `xsd:ID` (NCName: must not start with a digit, no whitespace).
+ * Generates a BPMN element id of the form `Prefix_xxxxxxxxxxxxxxxx`, where
+ * the suffix is 16 hex characters (64 bits) of UUID entropy. Unique across
+ * the org by construction (no DB round-trip): at 64 bits, collision is
+ * negligible even across tens of thousands of ids. The leading letter
+ * prefix keeps it a valid `xsd:ID` (NCName: must not start with a digit,
+ * no whitespace). `prefix` itself must be NCName-safe (caller's
+ * responsibility — all call sites pass hardcoded safe literals).
  */
 export function bpmnId(prefix: string): string {
-  const hex = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  const hex = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
   return `${prefix}_${hex}`;
 }
 ```
@@ -292,8 +295,8 @@ describe('makeEmptyDiagram', () => {
   it('produces a fresh process id on every call', () => {
     const a = extractProcessId(makeEmptyDiagram());
     const b = extractProcessId(makeEmptyDiagram());
-    expect(a).toMatch(/^Process_[0-9a-f]{8}$/);
-    expect(b).toMatch(/^Process_[0-9a-f]{8}$/);
+    expect(a).toMatch(/^Process_[0-9a-f]{16}$/);
+    expect(b).toMatch(/^Process_[0-9a-f]{16}$/);
     expect(a).not.toBe(b);
   });
 
