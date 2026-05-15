@@ -22,7 +22,7 @@ import StatusBar from './components/StatusBar';
 import Toolbar, { type ExportFormat } from './components/Toolbar';
 import type { BpmnApi } from './hooks/useBpmnModeler';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { EMPTY_DIAGRAM } from './lib/diagrams/emptyDiagram';
+import { makeEmptyDiagram } from './lib/diagrams/emptyDiagram';
 import { exportBpmn } from './lib/exporters/exportBpmn';
 import { exportPdf } from './lib/exporters/exportPdf';
 import { exportPng } from './lib/exporters/exportPng';
@@ -177,7 +177,7 @@ function Workspace({ orgId }: { orgId: string }) {
         orgId,
         ownerId: userId,
         name: 'Untitled',
-        bpmnXml: EMPTY_DIAGRAM,
+        bpmnXml: makeEmptyDiagram(),
       });
       await refresh();
       await open(row.id);

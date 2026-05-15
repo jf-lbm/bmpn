@@ -13,7 +13,7 @@ import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import 'diagram-js-minimap/assets/diagram-js-minimap.css';
 import '@bpmn-io/properties-panel/dist/assets/properties-panel.css';
 
-import { EMPTY_DIAGRAM } from '../lib/diagrams/emptyDiagram';
+import { makeEmptyDiagram } from '../lib/diagrams/emptyDiagram';
 import { useEditorStore } from '../store/editorStore';
 
 export interface BpmnApi {
@@ -77,7 +77,8 @@ export function useBpmnModeler(
   apiRef: MutableRefObject<BpmnApi | null>,
 ): void {
   const mode = useEditorStore((s) => s.mode);
-  const xmlRef = useRef<string>(EMPTY_DIAGRAM);
+  const xmlRef = useRef<string>('');
+  if (!xmlRef.current) xmlRef.current = makeEmptyDiagram();
 
   useEffect(() => {
     const canvasEl = canvasRef.current;
