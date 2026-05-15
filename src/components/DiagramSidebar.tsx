@@ -55,7 +55,7 @@ export default function DiagramSidebar({
               >
                 <span className="truncate">{d.name}</span>
                 {d.is_callable && (
-                  <span className="shrink-0 rounded bg-blue-100 px-1 text-[10px] font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                  <span className="shrink-0 rounded bg-blue-600 px-1 text-[10px] font-medium text-white dark:bg-blue-500">
                     reusable
                   </span>
                 )}

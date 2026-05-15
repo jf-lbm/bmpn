@@ -2,9 +2,11 @@ import { bpmnId } from '../ids';
 
 /**
  * Builds an empty BPMN 2.0 diagram with freshly generated, org-unique
- * ids. Call this per new diagram — never reuse one string, or every
- * diagram in the org would share `Process_1` and cross-diagram
- * `calledElement` references would be ambiguous.
+ * ids. Call this once per *persisted* new diagram — two saved diagrams
+ * must not share a process id, or cross-diagram `calledElement`
+ * references would be ambiguous. (The editor hook may hold a single
+ * generated bootstrap string and reuse it across renders; that is fine —
+ * it is transient and never persisted.)
  */
 export function makeEmptyDiagram(): string {
   const defs = bpmnId('Definitions');

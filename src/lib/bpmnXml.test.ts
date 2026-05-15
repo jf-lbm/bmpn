@@ -26,4 +26,10 @@ describe('extractProcessId', () => {
   it('returns null for empty/garbage input', () => {
     expect(extractProcessId('')).toBeNull();
   });
+
+  it('reads the id when it appears after other attributes', () => {
+    expect(
+      extractProcessId('<bpmn:process isExecutable="true" id="Process_late"/>'),
+    ).toBe('Process_late');
+  });
 });

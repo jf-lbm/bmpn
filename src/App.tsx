@@ -396,12 +396,14 @@ function Workspace({ orgId }: { orgId: string }) {
       return;
     }
     try {
-      await setDiagramCallable(db, id, !isCurrentCallable);
+      const current =
+        diagrams.find((d) => d.id === id)?.is_callable ?? false;
+      await setDiagramCallable(db, id, !current);
       await refresh();
     } catch (e) {
       notify(errMsg(e));
     }
-  }, [db, isCurrentCallable, refresh, notify]);
+  }, [db, diagrams, refresh, notify]);
 
   // Initial load: reopen last diagram, else first, else create one.
   const bootedRef = useRef(false);

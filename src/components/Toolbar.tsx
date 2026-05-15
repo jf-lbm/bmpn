@@ -50,6 +50,7 @@ export default function Toolbar({
   const mode = useEditorStore((s) => s.mode);
   const dark = useEditorStore((s) => s.dark);
   const isDirty = useEditorStore((s) => s.isDirty);
+  const diagramId = useEditorStore((s) => s.diagramId);
   const toggleMode = useEditorStore((s) => s.toggleMode);
   const toggleDark = useEditorStore((s) => s.toggleDark);
   const toggleSidebar = useEditorStore((s) => s.toggleSidebar);
@@ -84,6 +85,7 @@ export default function Toolbar({
       <button
         className={`${btn} ${isCallable ? 'text-blue-600 dark:text-blue-400' : ''}`}
         onClick={onToggleCallable}
+        disabled={!diagramId}
         title={
           isCallable
             ? 'This diagram is reusable (callable by others)'

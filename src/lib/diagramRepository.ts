@@ -134,14 +134,17 @@ export async function getDiagramByProcessId(
   db: SupabaseClient,
   processId: string,
 ): Promise<DiagramSummary | null> {
+  // Legacy/imported diagrams can share a process id; pick the most
+  // recently updated so drill-in resolves to a deterministic target.
   const { data, error } = await db
     .from('diagrams')
     .select(SUMMARY_COLS)
     .eq('process_id', processId)
+    .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as DiagramSummary | null) ?? null;
+  return data as DiagramSummary | null;
 }
 
 /** Flips the reusable flag on one diagram. */

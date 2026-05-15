@@ -16,4 +16,12 @@ describe('makeEmptyDiagram', () => {
     const pid = extractProcessId(xml)!;
     expect(xml).toContain(`bpmnElement="${pid}"`);
   });
+
+  it('wires the start event into its BPMNShape', () => {
+    const xml = makeEmptyDiagram();
+    const sid = xml.match(/<bpmn:startEvent id="([^"]+)"/)![1];
+    expect(xml).toContain(
+      `<bpmndi:BPMNShape id="${sid}_di" bpmnElement="${sid}">`,
+    );
+  });
 });
