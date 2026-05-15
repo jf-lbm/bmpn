@@ -25,17 +25,44 @@ export interface BpmnApi {
   zoomIn: () => void;
   zoomOut: () => void;
   fit: () => void;
+  insertCallActivity: (opts: { calledElement: string; name: string }) => void;
+  setCallActivityOpenHandler: (
+    fn: ((calledElement: string) => void) | null,
+  ) => void;
 }
 
 interface CanvasSvc {
   zoom: (level?: number | string, center?: unknown) => number;
+  viewbox: () => { x: number; y: number; width: number; height: number };
+  getRootElement: () => unknown;
+}
+interface ElementFactorySvc {
+  createShape: (attrs: { type: string }) => unknown;
+}
+interface ModelingSvc {
+  createShape: (
+    shape: unknown,
+    position: { x: number; y: number },
+    target: unknown,
+  ) => unknown;
+  updateProperties: (
+    element: unknown,
+    props: Record<string, unknown>,
+  ) => void;
+}
+interface DblClickEvent {
+  element?: { businessObject?: { $type?: string; calledElement?: string } };
 }
 interface CommandStackSvc {
   undo: () => void;
   redo: () => void;
 }
 interface EventBusSvc {
-  on: (event: string, cb: (e?: unknown) => void) => void;
+  on: (
+    event: string,
+    priorityOrCb: number | ((e?: unknown) => unknown),
+    cb?: (e?: unknown) => unknown,
+  ) => void;
 }
 interface ElementRegistrySvc {
   getAll: () => Array<{ type: string }>;
@@ -79,6 +106,9 @@ export function useBpmnModeler(
   const mode = useEditorStore((s) => s.mode);
   const xmlRef = useRef<string>('');
   if (!xmlRef.current) xmlRef.current = makeEmptyDiagram();
+  const openHandlerRef = useRef<((calledElement: string) => void) | null>(
+    null,
+  );
 
   useEffect(() => {
     const canvasEl = canvasRef.current;
@@ -126,6 +156,13 @@ export function useBpmnModeler(
       });
     });
     bus.on('canvas.viewbox.changed', syncZoom);
+    bus.on('element.dblclick', 2000, (e?: unknown) => {
+      const bo = (e as DblClickEvent | undefined)?.element?.businessObject;
+      if (bo?.$type === 'bpmn:CallActivity' && bo.calledElement) {
+        openHandlerRef.current?.(bo.calledElement);
+        return false;
+      }
+    });
 
     const fit = () => {
       try {
@@ -159,6 +196,25 @@ export function useBpmnModeler(
         c.zoom(Number(c.zoom()) / 1.2);
       },
       fit,
+      insertCallActivity: ({ calledElement, name }) => {
+        if (mode !== 'edit') return;
+        const canvas = inst.get<CanvasSvc>('canvas');
+        const elementFactory = inst.get<ElementFactorySvc>('elementFactory');
+        const modeling = inst.get<ModelingSvc>('modeling');
+        const vb = canvas.viewbox();
+        const shape = elementFactory.createShape({
+          type: 'bpmn:CallActivity',
+        });
+        const created = modeling.createShape(
+          shape,
+          { x: vb.x + vb.width / 2, y: vb.y + vb.height / 2 },
+          canvas.getRootElement(),
+        );
+        modeling.updateProperties(created, { calledElement, name });
+      },
+      setCallActivityOpenHandler: (fn) => {
+        openHandlerRef.current = fn;
+      },
     };
     apiRef.current = api;
 
